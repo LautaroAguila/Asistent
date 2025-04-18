@@ -1,25 +1,27 @@
+// src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import {Login} from "./pages/Login/Login";
-import {Register} from "./pages/Register/Register";
-import {Profile} from "./pages/Profile/Profile";
-import {StudentList} from "./components/StudentList/StudentList";
-import {SchoolList} from "./components/SchoolList/SchoolList";
-import {Navbar} from "./components/NavBar/NavBar"; // Asegúrate de tener un Navbar
-
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Profile from "./pages/Profile";
+import TablaDetalle from "./pages/TablaDetalle";
+import AlumnoDetalle from "./pages/AlumnoDetalle";
 function App() {
   return (
     <Router>
-      <Navbar /> {/* Si tienes un Navbar, agrégalo aquí */}
       <Routes>
-        <Route path="/" element={<Profile />} /> {/* Ruta inicial */}
-        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/students" element={<StudentList />} />
-        <Route path="/schools" element={<SchoolList />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/tabla/:id" element={<TablaDetalle />} />
+        <Route path="/alumno/:id" element={<AlumnoDetalle />} />
+
       </Routes>
     </Router>
   );
 }
 
 export default App;
+
+
+// Dentro de <Routes>
+
