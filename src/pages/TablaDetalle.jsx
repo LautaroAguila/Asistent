@@ -1,11 +1,10 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc
-} from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc} from "firebase/firestore";
 import { db, auth } from "../FireBase/firebaseConfig";
 import AdministrarMiembros from "../components/AdministrarMiembros";
 import { useAuth } from "../hooks/useAuth";
+import NavBar from "../components/NavBar"; 
 
 function TablaDetalle() {
   const { id } = useParams();
@@ -17,6 +16,11 @@ function TablaDetalle() {
   const [turnoFiltro, setTurnoFiltro] = useState("");
   const [ordenAsc, setOrdenAsc] = useState(true);
   const [rolUsuario, setRolUsuario] = useState(null);
+
+  
+  const [tablasCreadas, setTablasCreadas] = useState([]);
+  const [tablasUnidas, setTablasUnidas] = useState([]);
+
 
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -36,11 +40,59 @@ function TablaDetalle() {
     return esDueño || rolUsuario === "editor";
   }, [esDueño, rolUsuario]);
 
+  const handleSeleccionarTabla = (tablaId) => {
+    navigate(`/tabla/${tablaId}`);
+  };
+
+  const handleLogout = async () => {
+    await auth.signOut();
+    navigate("/");
+  };
+
   useEffect(() => {
     if (!loading && !user) {
       navigate("/");
     }
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    const obtenerTablasUsuario = async () => {
+      if (!user) return;
+      try {
+        // Tablas creadas
+        const creadasSnap = await getDocs(query(
+          collection(db, "tablas_asistencia"),
+          where("creadorUid", "==", user.uid)
+        ));
+        const creadas = creadasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  
+        // Tablas unidas
+        const miembrosSnap = await getDocs(query(
+          collection(db, "miembros_tabla"),
+          where("usuarioId", "==", user.uid),
+          where("estado", "==", "aceptado")
+        ));
+        const idsUnidas = miembrosSnap.docs.map(doc => doc.data().tablaId);
+        const unidas = [];
+  
+        for (const tablaId of idsUnidas) {
+          if (!creadas.find(c => c.id === tablaId)) {
+            const tDoc = await getDoc(doc(db, "tablas_asistencia", tablaId));
+            if (tDoc.exists()) {
+              unidas.push({ id: tablaId, ...tDoc.data() });
+            }
+          }
+        }
+  
+        setTablasCreadas(creadas);
+        setTablasUnidas(unidas);
+      } catch (err) {
+        console.error("Error cargando tablas del usuario", err);
+      }
+    };
+  
+    obtenerTablasUsuario();
+  }, [user]);
 
   useEffect(() => {
     const obtenerRolUsuario = async () => {
@@ -70,7 +122,6 @@ function TablaDetalle() {
     };
     obtenerRolUsuario();
   }, [id, user]);
-  
 
   useEffect(() => {
     const fetchData = async () => {
@@ -184,6 +235,14 @@ function TablaDetalle() {
   }
 
   return (
+    <>
+    <NavBar
+      nombreTablaActual={`${tabla?.escuela} (${tabla?.turno})`}
+      tablasCreadas={tablasCreadas}
+      tablasUnidas={tablasUnidas}
+      onSeleccionarTabla={handleSeleccionarTabla}
+      onCerrarSesion={handleLogout}
+    />
     <div className="container mt-4">
       <div className="row mb-3">
         <div className="col-md-4">
@@ -304,6 +363,7 @@ function TablaDetalle() {
         <AdministrarMiembros tablaId={id} esDueño={esDueño} />
       )}
     </div>
+    </>
   );
 }
 
