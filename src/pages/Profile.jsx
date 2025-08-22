@@ -2,15 +2,19 @@ import { useEffect, useState } from "react";
 import { auth, db } from "../FireBase/firebaseConfig";
 import { signOut, onAuthStateChanged} from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import {doc,getDoc,addDoc,collection,query,where,getDocs,updateDoc} from "firebase/firestore";
+import {doc,getDoc,addDoc,collection,query,where,getDocs,updateDoc,deleteDoc } from "firebase/firestore";
+import { useAuth } from "../hooks/useAuth";
+import FotoPerfil from '../components/Profile/FotoPerfil';
+import FormularioCrearTabla from "../components/Profile/FormularioCrearTabla";
+import ListaTablas from "../components/Profile/ListaTablas";
+import BuscadorTablaPrivada from "../components/Profile/BuscadorTablaPrivada";
+import TablasPublicas from "../components/Profile/TablasPublicas";
 
 function Profile() {
   const [userData, setUserData] = useState(null);
   const [tablasCreadas, setTablasCreadas] = useState([]);
   const [tablasUnidas, setTablasUnidas] = useState([]);
   const [tablasPublicas, setTablasPublicas] = useState([]);
-  const [clavePrivada, setClavePrivada] = useState("");
-  const [tablaSeleccionada, setTablaSeleccionada] = useState(null);
   const [claveBusqueda, setClaveBusqueda] = useState("");
   const [tablaPrivadaEncontrada, setTablaPrivadaEncontrada] = useState(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -24,7 +28,8 @@ function Profile() {
   });
   const [subiendoImagen, setSubiendoImagen] = useState(false);
   const [filtroPublicas, setFiltroPublicas] = useState("");
-  
+  const { user } = useAuth();
+
 
   const handleChangeTabla = (e) => {
     const { name, value, type, checked } = e.target;
@@ -54,6 +59,63 @@ function Profile() {
     } catch (error) {
       console.error(error);
       alert("Error al crear tabla");
+    }
+  };
+
+  const handleEliminarTabla = async (tablaId) => {
+    const confirmacion = window.confirm("¿Estás seguro de que querés eliminar esta tabla? Esta acción no se puede deshacer.");
+    if (!confirmacion) return;
+  
+    try {
+      // 1. Eliminar las referencias en la colección de miembros_tabla
+      const q = query(collection(db, "miembros_tabla"), where("tablaId", "==", tablaId));
+      const snap = await getDocs(q);
+  
+      // Eliminar cada documento relacionado en miembros_tabla
+      for (const docu of snap.docs) {
+        await deleteDoc(doc(db, "miembros_tabla", docu.id));
+      }
+  
+      // 2. Eliminar la tabla en la colección principal
+      await deleteDoc(doc(db, "tablas_asistencia", tablaId));
+      
+      // 3. Actualizar la lista local de tablas creadas
+      setTablasCreadas(prev => prev.filter(tabla => tabla.id !== tablaId));
+  
+      alert("Tabla eliminada correctamente.");
+    } catch (error) {
+      console.error("Error al eliminar la tabla:", error);
+      alert("Ocurrió un error al intentar eliminar la tabla.");
+    }
+  };
+  
+  const handleDesvincularTabla = async (tablaId) => {
+    if (!user) return;
+  
+    const miembroSubRef = doc(db, "tablas", tablaId, "miembros", user.uid);
+  
+    try {
+      // 1. Buscar el documento en miembros_tabla
+      const q = query(
+        collection(db, "miembros_tabla"),
+        where("tablaId", "==", tablaId),
+        where("usuarioId", "==", user.uid)
+      );
+      const snap = await getDocs(q);
+  
+      // 2. Eliminar documentos encontrados
+      for (const docu of snap.docs) {
+        await deleteDoc(doc(db, "miembros_tabla", docu.id));
+      }
+  
+      // 3. Eliminar también de la subcolección (por si acaso)
+      await deleteDoc(miembroSubRef);
+  
+      alert("Te desvinculaste correctamente de la tabla.");
+      setTablasUnidas(prev => prev.filter(t => t.id !== tablaId));
+    } catch (error) {
+      console.error("Error al desvincularse:", error);
+      alert("Ocurrió un error al desvincularse.");
     }
   };
 
@@ -235,210 +297,58 @@ function Profile() {
     lector.readAsDataURL(archivo);
   };
 
-  return (
-    <div className="container mt-5">
-      <h2 className="mb-4">Perfil</h2>
-
-      {/* Primera Fila: Foto - Info - Tablas */}
+return (
+    <div className="container py-5">
+      <h2 className="mb-5 text-center">Perfil</h2>
       <div className="row">
-        {/* Columna Izquierda: Foto de perfil */}
-        <div className="col-md-3 text-center">
-          {userData?.fotoPerfil && (
-            <img
-              src={userData.fotoPerfil}
-              alt="Foto de perfil"
-              className="img-fluid rounded-circle mb-3"
-              style={{ width: "120px", height: "120px", objectFit: "cover" }}
-            />
-          )}
-          <div className="mb-3">
-            <label htmlFor="imagenPerfil" className="form-label">Cambiar foto</label>
-            <input
-              type="file"
-              accept="image/*"
-              className="form-control"
-              id="imagenPerfil"
-              onChange={handleImagenCambio}
-              disabled={subiendoImagen}
-            />
-            {subiendoImagen && <small>Subiendo imagen...</small>}
-          </div>
+        <div className="col-md-3">
+          <FotoPerfil userData={userData} handleImagenCambio={handleImagenCambio} subiendoImagen={subiendoImagen} />
         </div>
-
-        {/* Columna Central: Info personal y acciones */}
-        <div className="col-md-6">
+        <div className="col-md-6 mb-4">
           {userData ? (
             <>
               <p><strong>Nombre:</strong> {userData.nombre}</p>
               <p><strong>Apellido:</strong> {userData.apellido}</p>
               <p><strong>CUIL:</strong> {userData.cuil}</p>
               <p><strong>Email:</strong> {userData.email}</p>
-
-              <div className="d-flex flex-wrap gap-2 my-3">
+              <div className="d-flex flex-wrap gap-2 my-4">
                 <button className="btn btn-danger" onClick={handleLogout}>Cerrar Sesión</button>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => setMostrarFormulario(!mostrarFormulario)}
-                >
-                  {mostrarFormulario ? "Ocultar formulario" : "Crear nueva tabla"}
-                </button>
               </div>
-
-              <div className={`collapse ${mostrarFormulario ? "show" : ""}`}>
-                {/* FORMULARIO DE CREACIÓN DE TABLA */}
-                <form onSubmit={handleCrearTabla}>
-                  <div className="mb-3">
-                    <label>Nombre de la escuela *</label>
-                    <input
-                      className="form-control"
-                      name="escuela"
-                      value={formTabla.escuela}
-                      onChange={handleChangeTabla}
-                      required
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label>Grado (opcional)</label>
-                    <input
-                      className="form-control"
-                      name="grado"
-                      value={formTabla.grado}
-                      onChange={handleChangeTabla}
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label>Turno</label>
-                    <select
-                      className="form-control"
-                      name="turno"
-                      value={formTabla.turno}
-                      onChange={handleChangeTabla}
-                    >
-                      <option value="mañana">Mañana</option>
-                      <option value="tarde">Tarde</option>
-                      <option value="noche">Noche</option>
-                    </select>
-                  </div>
-                  <div className="mb-3 form-check">
-                    <input
-                      type="checkbox"
-                      className="form-check-input"
-                      id="esPublica"
-                      name="esPublica"
-                      checked={formTabla.esPublica}
-                      onChange={handleChangeTabla}
-                    />
-                    <label className="form-check-label" htmlFor="esPublica">
-                      Tabla pública (otros pueden solicitar acceso)
-                    </label>
-                  </div>
-                  {!formTabla.esPublica && (
-                    <div className="mb-3">
-                      <label>Clave privada *</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="clavePrivada"
-                        value={formTabla.clavePrivada}
-                        onChange={handleChangeTabla}
-                        required
-                      />
-                    </div>
-                  )}
-                  <button className="btn btn-success">Crear tabla</button>
-                </form>
-              </div>
+              <FormularioCrearTabla
+                mostrarFormulario={mostrarFormulario}
+                setMostrarFormulario={setMostrarFormulario}
+                formTabla={formTabla}
+                handleChangeTabla={handleChangeTabla}
+                handleCrearTabla={handleCrearTabla}
+              />
             </>
           ) : (
             <p>Cargando datos...</p>
           )}
         </div>
-
-        {/* Columna Derecha: Tablas creadas y unidas */}
         <div className="col-md-3">
-          <h5>Tablas creadas</h5>
-          <ul className="list-group mb-4">
-            {tablasCreadas.map(tabla => (
-              <li key={tabla.id} className="list-group-item d-flex justify-content-between align-items-center">
-                {tabla.escuela}
-                <a href={`/tabla/${tabla.id}`} className="btn btn-sm btn-outline-primary">Ver</a>
-              </li>
-            ))}
-          </ul>
-
-          <h5>Tablas unidas</h5>
-          <ul className="list-group">
-            {tablasUnidas.map(tabla => (
-              <li key={tabla.id} className="list-group-item d-flex justify-content-between align-items-center">
-                {tabla.escuela}
-                <a href={`/tabla/${tabla.id}`} className="btn btn-sm btn-outline-secondary">Ver</a>
-              </li>
-            ))}
-          </ul>
+          <ListaTablas tablas={tablasCreadas} tipo="creadas" verTabla href eliminarTabla={handleEliminarTabla} />
+          <ListaTablas tablas={tablasUnidas} tipo="unidas" verTabla href eliminarTabla={handleDesvincularTabla} />
         </div>
       </div>
-
-      {/* Segunda Fila: Buscadores */}
       <hr className="my-5" />
       <div className="row">
         <div className="col-md-6">
-          <h5>Buscar tabla privada por clave</h5>
-          <div className="input-group mb-3">
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Ingresá la clave privada"
-              value={claveBusqueda}
-              onChange={(e) => setClaveBusqueda(e.target.value)}
-            />
-            <button className="btn btn-outline-primary" onClick={buscarTablaPrivada}>Buscar</button>
-          </div>
-
-          {tablaPrivadaEncontrada && (
-            <div className="alert alert-secondary d-flex justify-content-between align-items-center">
-              <div>
-                <strong>{tablaPrivadaEncontrada.escuela}</strong> ({tablaPrivadaEncontrada.turno})
-              </div>
-              <button
-                className="btn btn-sm btn-success"
-                onClick={() => solicitarAcceso(tablaPrivadaEncontrada)}
-              >
-                Solicitar acceso
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="col-md-6">
-          <h5>Tablas públicas disponibles</h5>
-          <input
-            type="text"
-            className="form-control mb-3"
-            placeholder="Buscar por nombre de escuela..."
-            value={filtroPublicas}
-            onChange={(e) => setFiltroPublicas(e.target.value)}
+          <BuscadorTablaPrivada
+            claveBusqueda={claveBusqueda}
+            setClaveBusqueda={setClaveBusqueda}
+            buscarTablaPrivada={buscarTablaPrivada}
+            tablaPrivadaEncontrada={tablaPrivadaEncontrada}
+            solicitarAcceso={solicitarAcceso}
           />
-          <ul className="list-group">
-            {tablasPublicas
-              .filter(tabla =>
-                tabla.escuela.toLowerCase().includes(filtroPublicas.toLowerCase())
-              )
-              .map(tabla => (
-                <li key={tabla.id} className="list-group-item">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <div>
-                      <strong>{tabla.escuela}</strong> ({tabla.turno})
-                    </div>
-                    <button
-                      className="btn btn-sm btn-success"
-                      onClick={() => solicitarAcceso(tabla)}
-                    >
-                      Solicitar acceso
-                    </button>
-                  </div>
-                </li>
-              ))}
-          </ul>
+        </div>
+        <div className="col-md-6">
+          <TablasPublicas
+            tablasPublicas={tablasPublicas}
+            filtroPublicas={filtroPublicas}
+            setFiltroPublicas={setFiltroPublicas}
+            solicitarAcceso={solicitarAcceso}
+          />
         </div>
       </div>
     </div>

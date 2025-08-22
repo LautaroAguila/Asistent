@@ -9,6 +9,7 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const [mostrarPassword, setMostrarPassword] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -34,20 +35,47 @@ function Login() {
   };
 
   return (
-    <div className="container mt-5">
-      <h2>Iniciar Sesión</h2>
-      <form onSubmit={handleLogin}>
-        <div className="mb-3">
-          <label>Email</label>
-          <input className="form-control" value={email} onChange={e => setEmail(e.target.value)} required />
-        </div>
-        <div className="mb-3">
-          <label>Contraseña</label>
-          <input type="password" className="form-control" value={password} onChange={e => setPassword(e.target.value)} required />
-        </div>
-        <button className="btn btn-primary">Ingresar</button>
-        <p className="mt-3">¿No tienes cuenta? <Link to="/register">Registrate aquí</Link></p>
-      </form>
+    <div className="container d-flex justify-content-center align-items-center" style={{ minHeight: "100vh" }}>
+      <div className="card p-4 shadow" style={{ width: "100%", maxWidth: "400px" }}>
+        <h2 className="text-center mb-4">Iniciar Sesión</h2>
+        <form onSubmit={handleLogin}>
+          <div className="mb-3">
+            <label className="form-label">Email</label>
+            <input 
+              type="email" 
+              className="form-control" 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+              required 
+            />
+          </div>
+          <div className="mb-3">
+            <label className="form-label">Contraseña</label>
+            <div className="input-group">
+              <input 
+                type={mostrarPassword ? "text" : "password"}
+                className="form-control"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+              />
+              <button 
+                type="button" 
+                className="btn btn-outline-secondary" 
+                onClick={() => setMostrarPassword(!mostrarPassword)}
+              >
+                {mostrarPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
+          </div>
+          <div className="d-grid">
+            <button className="btn btn-primary">Ingresar</button>
+          </div>
+          <p className="mt-3 text-center">
+            ¿No tienes cuenta? <Link to="/register">Regístrate aquí</Link>
+          </p>
+        </form>
+      </div>
     </div>
   );
 }

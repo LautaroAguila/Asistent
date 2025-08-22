@@ -6,6 +6,7 @@ import { auth, db } from "../FireBase/firebaseConfig";
 import { useNavigate, Link } from "react-router-dom";
 
 function Register() {
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [form, setForm] = useState({
     nombre: "",
     apellido: "",
@@ -36,32 +37,53 @@ function Register() {
   };
 
   return (
-    <div className="container mt-5">
-      <h2>Registro</h2>
-      <form onSubmit={handleRegister}>
-        <div className="mb-3">
-          <label>Nombre</label>
-          <input className="form-control" name="nombre" onChange={handleChange} required />
-        </div>
-        <div className="mb-3">
-          <label>Apellido</label>
-          <input className="form-control" name="apellido" onChange={handleChange} required />
-        </div>
-        <div className="mb-3">
-          <label>CUIL</label>
-          <input className="form-control" name="cuil" onChange={handleChange} required />
-        </div>
-        <div className="mb-3">
-          <label>Email</label>
-          <input className="form-control" type="email" name="email" onChange={handleChange} required />
-        </div>
-        <div className="mb-3">
-          <label>Contraseña</label>
-          <input className="form-control" type="password" name="password" onChange={handleChange} required />
-        </div>
-        <button className="btn btn-success">Registrarse</button>
-        <p className="mt-3">¿Ya tienes cuenta? <Link to="/">Inicia sesión</Link></p>
-      </form>
+    <div className="container d-flex justify-content-center align-items-center" style={{ minHeight: "100vh" }}>
+      <div className="card p-4 shadow" style={{ width: "100%", maxWidth: "500px" }}>
+        <h2 className="text-center mb-4">Registro</h2>
+        <form onSubmit={handleRegister}>
+          <div className="mb-3">
+            <label className="form-label">Nombre</label>
+            <input className="form-control" name="nombre" onChange={handleChange} required />
+          </div>
+          <div className="mb-3">
+            <label className="form-label">Apellido</label>
+            <input className="form-control" name="apellido" onChange={handleChange} required />
+          </div>
+          <div className="mb-3">
+            <label className="form-label">CUIL</label>
+            <input className="form-control" name="cuil" onChange={handleChange} required />
+          </div>
+          <div className="mb-3">
+            <label className="form-label">Email</label>
+            <input type="email" className="form-control" name="email" onChange={handleChange} required />
+          </div>
+          <div className="mb-3">
+            <label className="form-label">Contraseña</label>
+            <div className="input-group">
+              <input 
+                type={mostrarPassword ? "text" : "password"}
+                className="form-control"
+                name="password"
+                onChange={handleChange}
+                required
+              />
+              <button 
+                type="button" 
+                className="btn btn-outline-secondary" 
+                onClick={() => setMostrarPassword(!mostrarPassword)}
+              >
+                {mostrarPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
+          </div>
+          <div className="d-grid">
+            <button className="btn btn-success">Registrarse</button>
+          </div>
+          <p className="mt-3 text-center">
+            ¿Ya tienes cuenta? <Link to="/">Inicia sesión</Link>
+          </p>
+        </form>
+      </div>
     </div>
   );
 }

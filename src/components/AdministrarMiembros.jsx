@@ -42,6 +42,14 @@ const AdministrarMiembros = ({ tablaId, esDueño }) => {
         await updateDoc(ref, { rol: nuevoRol });
         obtenerMiembrosAceptados();
     };
+
+    const eliminarMiembro = async (idMiembro) => {
+        const confirmacion = window.confirm("¿Estás seguro de que querés eliminar a este miembro de la tabla?");
+        if (!confirmacion) return;
+    
+        await deleteDoc(doc(db, "miembros_tabla", idMiembro));
+        obtenerMiembrosAceptados();
+    };
     
     useEffect(() => {
         if (esDueño) {
@@ -93,7 +101,7 @@ const AdministrarMiembros = ({ tablaId, esDueño }) => {
                         <div>
                             {miembro.nombreUsuario} - CUIL: {miembro.cuil}
                         </div>
-                        <div>
+                        <div className="d-flex justify-content-between align-items-center">
                             <select
                                 className="form-select form-select-sm"
                                 value={miembro.rol || "lector"}
@@ -102,6 +110,12 @@ const AdministrarMiembros = ({ tablaId, esDueño }) => {
                                 <option value="lector">Lector</option>
                                 <option value="editor">Editor</option>
                             </select>
+                            <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => eliminarMiembro(miembro.id)}
+                            >
+                            Eliminar
+                            </button>
                         </div>
                     </li>
                 ))}
