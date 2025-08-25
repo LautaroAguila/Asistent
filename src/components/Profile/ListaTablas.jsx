@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from "react-router-dom";
 
 const ListaTablas = ({ tablas, tipo, verTabla, eliminarTabla }) => {
     return (
@@ -12,9 +13,13 @@ const ListaTablas = ({ tablas, tipo, verTabla, eliminarTabla }) => {
                 <li key={tabla.id} className="list-group-item d-flex justify-content-between align-items-center">
                 <span>{tabla.escuela} ({tabla.turno})</span>
                 <div className="d-flex gap-2">
-                    <a href={`/tabla/${tabla.id}`} className="btn btn-sm btn-outline-primary" title="Ver tabla">
-                    <i className="bi bi-eye"></i>
-                    </a>
+                    <Link 
+                        to={`/tabla/${tabla.id}`} 
+                        className="btn btn-sm btn-outline-primary" 
+                        title="Ver tabla"
+                        >
+                        <i className="bi bi-eye"></i>
+                        </Link>
                     <button
                     className="btn btn-sm btn-outline-danger"
                     title={tipo === 'creadas' ? "Eliminar tabla" : "Desvincular tabla"}
