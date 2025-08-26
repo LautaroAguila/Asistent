@@ -1,7 +1,7 @@
 import React from "react";
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc} from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc} from "firebase/firestore";
 import { db, auth } from "../FireBase/firebaseConfig";
 import AdministrarMiembros from "../components/AdministrarMiembros";
 import { useAuth } from "../hooks/useAuth";
@@ -144,7 +144,24 @@ function TablaDetalle() {
     };
     fetchData();
   }, [id]);
+  const eliminarAlumno = async (idAlumno) => {
+    if (!esEditor) return;
 
+    const confirmar = window.confirm("¿Seguro que querés eliminar este alumno? Esta acción no se puede deshacer.");
+    if (!confirmar) return;
+
+    try {
+      await deleteDoc(doc(db, "alumnos", idAlumno));
+
+      // actualizar estado local
+      setAlumnos(alumnos.filter((a) => a.id !== idAlumno));
+
+      alert("Alumno eliminado correctamente.");
+    } catch (error) {
+      console.error("Error al eliminar alumno:", error);
+      alert("Hubo un error eliminando el alumno.");
+    }
+  };
   const alumnosFiltrados = alumnos
     .filter((a) =>
       (a.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -410,11 +427,28 @@ function TablaDetalle() {
                   <td>
                     {esEditor && (
                       <>
-                        <button className="btn btn-success btn-sm me-1" onClick={() => actualizarAsistencias(alumno.id, "asistencia")}>+1 ✅</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => actualizarAsistencias(alumno.id, "inasistencia")}>+1 ❌</button>
+                        <button
+                          className="btn btn-success btn-sm me-1"
+                          onClick={() => actualizarAsistencias(alumno.id, "asistencia")}
+                        >
+                          +1 ✅
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm me-1"
+                          onClick={() => actualizarAsistencias(alumno.id, "inasistencia")}
+                        >
+                          +1 ❌
+                        </button>
+                        <button
+                          className="btn btn-outline-danger btn-sm"
+                          onClick={() => eliminarAlumno(alumno.id)}
+                        >
+                          🗑
+                        </button>
                       </>
                     )}
                   </td>
+
                 </tr>
 
                 {alumnoExpandido === alumno.id && (
@@ -425,26 +459,71 @@ function TablaDetalle() {
                           className="btn-close"
                           onClick={() => setAlumnoExpandido(null)}
                         ></button>
-                        {[
-                          "dni", "grupo_familiar", "tel_contacto",
-                          "nombre_tutor", "dni_tutor", "profesionales",
-                          "observaciones", "fechaNacimiento", "direccion"
-                        ].map((campo) => (
-                          <div key={campo} className="mb-2">
-                            <strong>{campo.replaceAll("_", " ")}:</strong>
-                            <input
-                              className="form-control"
-                              value={alumno[campo] || ""}
-                              onChange={(e) =>
-                                handleCampoExpandido(alumno.id, campo, e.target.value)
-                              }
-                              readOnly={!esEditor}
-                            />
-                          </div>
-                        ))}
+
+                        <div className="row">
+                          {/* Campos cortos */}
+                          {[
+                            { campo: "dni", label: "DNI", size: "3" },
+                            { campo: "edad", label: "Edad", size: "2" },
+                            { campo: "tel_contacto", label: "Teléfono", size: "3" },
+                            { campo: "dni_tutor", label: "DNI Tutor", size: "3" },
+                          ].map(({ campo, label, size }) => (
+                            <div key={campo} className={`col-md-${size} mb-2`}>
+                              <label className="fw-bold">{label}:</label>
+                              <input
+                                className="form-control"
+                                value={alumno[campo] || ""}
+                                onChange={(e) =>
+                                  handleCampoExpandido(alumno.id, campo, e.target.value)
+                                }
+                                readOnly={!esEditor}
+                              />
+                            </div>
+                          ))}
+
+                          {/* Campos medianos */}
+                          {[
+                            { campo: "nombre_tutor", label: "Nombre Tutor", size: "4" },
+                            { campo: "grupo_familiar", label: "Grupo Familiar", size: "4" },
+                            { campo: "fechaNacimiento", label: "Fecha de nacimiento", size: "3", type: "date" },
+                            { campo: "direccion", label: "Dirección", size: "5" },{ campo: "profesionales", label: "Profesionales", size: "6" },
+                          ].map(({ campo, label, size, type }) => (
+                            <div key={campo} className={`col-md-${size} mb-2`}>
+                              <label className="fw-bold">{label}:</label>
+                              <input
+                                type={type || "text"}
+                                className="form-control"
+                                value={alumno[campo] || ""}
+                                onChange={(e) =>
+                                  handleCampoExpandido(alumno.id, campo, e.target.value)
+                                }
+                                readOnly={!esEditor}
+                              />
+                            </div>
+                          ))}
+
+                          {/* Campos largos */}
+                          {[
+                            { campo: "observaciones", label: "Observaciones" }
+                          ].map(({ campo, label }) => (
+                            <div key={campo} className="col-12 mb-2">
+                              <label className="fw-bold">{label}:</label>
+                              <textarea
+                                className="form-control"
+                                rows="3"
+                                value={alumno[campo] || ""}
+                                onChange={(e) =>
+                                  handleCampoExpandido(alumno.id, campo, e.target.value)
+                                }
+                                readOnly={!esEditor}
+                              />
+                            </div>
+                          ))}
+                        </div>
+
                         {esEditor && (
                           <button
-                            className="btn btn-primary mt-2"
+                            className="btn btn-primary mt-3"
                             onClick={() => guardarCambiosAlumno(alumno)}
                           >
                             Guardar cambios
@@ -454,6 +533,7 @@ function TablaDetalle() {
                     </td>
                   </tr>
                 )}
+
               </>
             ))}
           </tbody>
@@ -488,13 +568,6 @@ function TablaDetalle() {
                     { label: "Grado*", name: "grado", type: "number", min: "1" },
                     { label: "DNI*", name: "dni", type: "number" },
                     { label: "Fecha de nacimiento*", name: "fechaNacimiento", type: "date" },
-                    { label: "Teléfono de contacto", name: "tel_contacto", type: "tel" },
-                    { label: "Grupo Familiar", name: "grupo_familiar", type: "text" },
-                    { label: "Nombre Tutor", name: "nombre_tutor", type: "text" },
-                    { label: "DNI Tutor", name: "dni_tutor", type: "number" },
-                    { label: "Profesionales", name: "profesionales", type: "text" },
-                    { label: "Observaciones", name: "observaciones", type: "text" },
-                    { label: "Dirección", name: "direccion", type: "text" },
                   ].map(({ label, name, type, min, options }) => (
                     <div
                       key={name}
